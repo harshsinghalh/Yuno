@@ -397,11 +397,10 @@ fun LibraryScreen(
                         horizontalArrangement = Arrangement.spacedBy(10.dp),
                     ) {
                         items(history.take(20), key = { "h-" + it.id }) { video ->
-                            val canRemove = !signedIn || video.feedback?.removeFromHistory != null
                             HistoryCard(
                                 video = video,
                                 onClick = { onOpen(video) },
-                                onRemove = if (canRemove) ({ onRemoveHistory(video) }) else null,
+                                onRemove = { onRemoveHistory(video) },
                             )
                         }
                     }
