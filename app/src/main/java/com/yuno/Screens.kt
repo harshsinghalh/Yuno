@@ -253,7 +253,6 @@ fun SubscriptionsScreen(
     onSearch: () -> Unit,
     onSignIn: () -> Unit,
     onAccount: () -> Unit,
-    onRemoveHistory: (VideoItem) -> Unit = {},
     scrollToTop: Int = 0,
     pullState: BarPullRefreshState? = null,
 ) {
@@ -369,6 +368,7 @@ fun LibraryScreen(
     onSearch: () -> Unit,
     onSignIn: () -> Unit,
     onAccount: () -> Unit,
+    onRemoveHistory: (VideoItem) -> Unit = {},
     scrollToTop: Int = 0,
     pullState: BarPullRefreshState? = null,
 ) {
