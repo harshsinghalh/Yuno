@@ -41,6 +41,7 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.BoxScope
@@ -65,6 +66,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.CornerBasedShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.composed
 import androidx.compose.ui.graphics.luminance
@@ -1055,6 +1057,26 @@ private fun BoxScope.ErrorPanel(message: String, state: PlayerState, onCollapse:
     }
 }
 
+/**
+ * The player uses the same backdrop glass as Yuno's navigation chrome. Keep a
+ * readable solid fallback when Liquid Glass is disabled or unsupported.
+ */
+@Composable
+private fun Modifier.playerControlSurface(
+    shape: CornerBasedShape,
+    fallback: Color,
+    glassTint: Color,
+): Modifier {
+    val enabled = LocalLiquidGlassEnabled.current && isGlassSupported()
+    return clip(shape).then(
+        if (enabled) {
+            Modifier.liquidGlass(shape, surfaceTint = glassTint).liquidGlassRim(shape)
+        } else {
+            Modifier.background(fallback, shape)
+        },
+    )
+}
+
 @Composable
 private fun GlassButton(
     icon: ImageVector,
@@ -1072,13 +1094,14 @@ private fun GlassButton(
         modifier = modifier
             .size(size)
             .pressable(enabled = enabled, onClick = onClick)
-            .clip(CircleShape)
-            .background(
-                when {
+            .playerControlSurface(
+                CircleShape,
+                fallback = when {
                     active -> c.primary
                     tinted -> Color.Black.copy(alpha = 0.38f)
                     else -> Color.Black.copy(alpha = 0f)
                 },
+                glassTint = if (active) c.primary.copy(alpha = 0.22f) else Color.Black.copy(alpha = if (tinted) 0.24f else 0.08f),
             ),
         contentAlignment = Alignment.Center,
     ) { Icon(icon, description, tint = if (active) c.onPrimary else Color.White, modifier = Modifier.size(iconSize)) }
@@ -1102,8 +1125,11 @@ private fun OverlayTile(
             .squishOn(filled)
             .size(size)
             .pressable(enabled = enabled) { view.performHapticFeedback(HapticFeedbackConstants.CONTEXT_CLICK); onClick() }
-            .clip(CircleShape)
-            .background(if (filled) c.primary else tile)
+            .playerControlSurface(
+                CircleShape,
+                fallback = if (filled) c.primary else tile,
+                glassTint = if (filled) c.primary.copy(alpha = 0.24f) else Color.Black.copy(alpha = 0.24f),
+            )
             .semantics { contentDescription = description },
         contentAlignment = Alignment.Center,
     ) { content(if (filled) c.onPrimary else c.onSurface) }
@@ -1145,8 +1171,11 @@ private fun OverlayPill(
             .height(height)
             .widthIn(min = height)
             .pressable(enabled = enabled) { view.performHapticFeedback(HapticFeedbackConstants.CONTEXT_CLICK); onClick() }
-            .clip(CircleShape)
-            .background(if (filled) c.primary else tile)
+            .playerControlSurface(
+                CircleShape,
+                fallback = if (filled) c.primary else tile,
+                glassTint = if (filled) c.primary.copy(alpha = 0.24f) else Color.Black.copy(alpha = 0.24f),
+            )
             .padding(horizontal = 11.dp)
             .semantics { contentDescription = description },
         contentAlignment = Alignment.Center,
@@ -1171,8 +1200,11 @@ private fun OverlaySeek(side: Int, enabled: Boolean, size: Dp, tile: Color = Mat
                 onSeek()
                 if (!reduced) scope.launch { spin.animateTo(0f, keyframes { durationMillis = 420; side * 50f at 150 }) }
             }
-            .clip(CircleShape)
-            .background(tile),
+            .playerControlSurface(
+                CircleShape,
+                fallback = tile,
+                glassTint = Color.Black.copy(alpha = 0.24f),
+            ),
         contentAlignment = Alignment.Center,
     ) {
         Icon(
@@ -1193,8 +1225,11 @@ private fun OverlayPlay(playing: Boolean, buffering: Boolean, size: Dp, enabled:
         Modifier
             .size(size)
             .pressable(enabled = enabled) { view.performHapticFeedback(HapticFeedbackConstants.CONTEXT_CLICK); onClick() }
-            .clip(CircleShape)
-            .background(c.primary),
+            .playerControlSurface(
+                CircleShape,
+                fallback = c.primary,
+                glassTint = c.primary.copy(alpha = 0.26f),
+            ),
         contentAlignment = Alignment.Center,
     ) {
         if (buffering) {
@@ -1682,89 +1717,107 @@ private fun Scrubber(
     val playedFraction = dragFraction ?: (positionMs.toFloat() / duration).coerceIn(0f, 1f)
     val bufferedFraction = (bufferedMs.toFloat() / duration).coerceIn(0f, 1f)
     val dragging = dragFraction != null
-    // Controls visible, or a lone drag while they're hidden: red + thumb, no overlay.
+    // Controls visible, or a lone drag while they're hidden: red + a small glass thumb.
     val chromeActive = active || dragging
     val playedColor by animateColorAsState(
         if (chromeActive) ScrubberActiveRed else played,
         tween(160, easing = Motion.Emphasized),
         label = "scrubPlayed",
     )
-    val knobRadius by animateDpAsState(if (dragging) knobDragging else knob, label = "knob")
+    val markerSize = if (dragging) knobDragging else knob
+    val capsuleWidth by animateDpAsState((markerSize * 1.5f).coerceIn(10.dp, 16.dp), label = "scrubCapsuleWidth")
+    val capsuleHeight by animateDpAsState((markerSize * 2.5f).coerceIn(17.dp, 24.dp), label = "scrubCapsuleHeight")
     val h = if (edgeToEdge) 2.dp else trackHeight
     val insetEnds = !edgeToEdge
-    Canvas(
-        modifier = modifier
-            .fillMaxWidth()
-            .height(touchHeight)
-            .pointerInput(enabled, durationMs, relativeDrag, tapToSeek, edgeToEdge, trackHeight) {
-                if (!enabled || durationMs <= 0) return@pointerInput
-                val slop = viewConfiguration.touchSlop * 0.35f
-                val endInset = if (edgeToEdge) 0f else (trackHeight / 2).toPx()
-                awaitEachGesture {
-                    val down = awaitFirstDown()
-                    down.consume()
-                    val width = (size.width - endInset * 2f).coerceAtLeast(1f)
-                    var fraction = (currentPositionMs.toFloat() / duration).coerceIn(0f, 1f)
-                    var dragged = false
-                    var slopAccum = Offset.Zero
-                    while (true) {
-                        val event = awaitPointerEvent()
-                        val change = event.changes.firstOrNull { it.id == down.id } ?: run {
-                            if (dragged) onDraggingChanged(false)
-                            break
-                        }
-                        if (!change.pressed) {
-                            if (dragged) onSeek((fraction * durationMs).toLong())
-                            else if (tapToSeek) {
-                                val x = (change.position.x - endInset).coerceIn(0f, width)
-                                onSeek((x / width * durationMs).toLong())
+
+    BoxWithConstraints(modifier = modifier.fillMaxWidth().height(touchHeight)) {
+        Canvas(
+            modifier = Modifier
+                .fillMaxSize()
+                .pointerInput(enabled, durationMs, relativeDrag, tapToSeek, edgeToEdge, trackHeight) {
+                    if (!enabled || durationMs <= 0) return@pointerInput
+                    val slop = viewConfiguration.touchSlop * 0.35f
+                    val endInset = if (edgeToEdge) 0f else (trackHeight / 2).toPx()
+                    awaitEachGesture {
+                        val down = awaitFirstDown()
+                        down.consume()
+                        val width = (size.width - endInset * 2f).coerceAtLeast(1f)
+                        var fraction = (currentPositionMs.toFloat() / duration).coerceIn(0f, 1f)
+                        var dragged = false
+                        var slopAccum = Offset.Zero
+                        while (true) {
+                            val event = awaitPointerEvent()
+                            val change = event.changes.firstOrNull { it.id == down.id } ?: run {
+                                if (dragged) onDraggingChanged(false)
+                                break
                             }
-                            dragFraction = null
-                            if (dragged) onDraggingChanged(false)
-                            break
-                        }
-                        val delta = change.positionChange()
-                        if (!dragged) {
-                            slopAccum += delta
-                            if (slopAccum.getDistance() < slop) continue
-                            dragged = true
-                            onDraggingChanged(true)
-                            fraction = (currentPositionMs.toFloat() / duration).coerceIn(0f, 1f)
-                            dragFraction = fraction
-                            onPreview((fraction * durationMs).toLong())
-                        } else {
-                            fraction = if (relativeDrag) {
-                                (fraction + delta.x / width).coerceIn(0f, 1f)
+                            if (!change.pressed) {
+                                if (dragged) onSeek((fraction * durationMs).toLong())
+                                else if (tapToSeek) {
+                                    val x = (change.position.x - endInset).coerceIn(0f, width)
+                                    onSeek((x / width * durationMs).toLong())
+                                }
+                                dragFraction = null
+                                if (dragged) onDraggingChanged(false)
+                                break
+                            }
+                            val delta = change.positionChange()
+                            if (!dragged) {
+                                slopAccum += delta
+                                if (slopAccum.getDistance() < slop) continue
+                                dragged = true
+                                onDraggingChanged(true)
+                                fraction = (currentPositionMs.toFloat() / duration).coerceIn(0f, 1f)
+                                dragFraction = fraction
+                                onPreview((fraction * durationMs).toLong())
                             } else {
-                                ((change.position.x - endInset) / width).coerceIn(0f, 1f)
+                                fraction = if (relativeDrag) {
+                                    (fraction + delta.x / width).coerceIn(0f, 1f)
+                                } else {
+                                    ((change.position.x - endInset) / width).coerceIn(0f, 1f)
+                                }
+                                dragFraction = fraction
+                                onPreview((fraction * durationMs).toLong())
                             }
-                            dragFraction = fraction
-                            onPreview((fraction * durationMs).toLong())
+                            change.consume()
                         }
-                        change.consume()
                     }
-                }
-            },
-    ) {
-        val trackH = h.toPx()
-        val centerY = if (edgeToEdge) edgeTouchPadAbove.toPx() else size.height / 2f
-        val y = centerY - trackH / 2f
-        val r = CornerRadius(trackH / 2f)
-        val endInset = if (insetEnds) trackH / 2f else 0f
-        val trackW = size.width - endInset * 2f
-        val left = endInset
-        drawRoundRect(track, Offset(left, y), Size(trackW, trackH), r)
-        drawRoundRect(buffered, Offset(left, y), Size(trackW * bufferedFraction, trackH), r)
-        drawRoundRect(playedColor, Offset(left, y), Size(trackW * playedFraction.coerceAtLeast(0f), trackH), r)
-        segments.forEach { seg ->
-            val x0 = left + trackW * (seg.startMs.toFloat() / duration).coerceIn(0f, 1f)
-            val x1 = left + trackW * (seg.endMs.toFloat() / duration).coerceIn(0f, 1f)
-            if (x1 > x0) drawRoundRect(seg.category.color, Offset(x0, y), Size(x1 - x0, trackH), r)
+                },
+        ) {
+            val trackH = h.toPx()
+            val centerY = if (edgeToEdge) edgeTouchPadAbove.toPx() else size.height / 2f
+            val y = centerY - trackH / 2f
+            val r = CornerRadius(trackH / 2f)
+            val endInset = if (insetEnds) trackH / 2f else 0f
+            val trackW = size.width - endInset * 2f
+            val left = endInset
+            drawRoundRect(track, Offset(left, y), Size(trackW, trackH), r)
+            drawRoundRect(buffered, Offset(left, y), Size(trackW * bufferedFraction, trackH), r)
+            drawRoundRect(playedColor, Offset(left, y), Size(trackW * playedFraction.coerceAtLeast(0f), trackH), r)
+            segments.forEach { seg ->
+                val x0 = left + trackW * (seg.startMs.toFloat() / duration).coerceIn(0f, 1f)
+                val x1 = left + trackW * (seg.endMs.toFloat() / duration).coerceIn(0f, 1f)
+                if (x1 > x0) drawRoundRect(seg.category.color, Offset(x0, y), Size(x1 - x0, trackH), r)
+            }
         }
+
         if (chromeActive) {
-            val knobR = knobRadius.toPx()
-            val knobX = (left + trackW * playedFraction).coerceIn(left + knobR, left + trackW - knobR)
-            drawCircle(playedColor, radius = knobR, center = Offset(knobX, centerY))
+            val inset = if (insetEnds) h / 2 else 0.dp
+            val markerCenter = inset + (maxWidth - inset * 2) * playedFraction
+            val markerLeft = (markerCenter - capsuleWidth / 2).coerceIn(0.dp, (maxWidth - capsuleWidth).coerceAtLeast(0.dp))
+            val markerCenterY = if (edgeToEdge) edgeTouchPadAbove else touchHeight / 2
+            val markerTop = markerCenterY - capsuleHeight / 2
+            val markerShape = RoundedCornerShape(6.dp)
+            Box(
+                Modifier
+                    .offset(x = markerLeft, y = markerTop)
+                    .size(capsuleWidth, capsuleHeight)
+                    .playerControlSurface(
+                        markerShape,
+                        fallback = Color.White.copy(alpha = 0.88f),
+                        glassTint = Color.White.copy(alpha = 0.20f),
+                    ),
+            )
         }
     }
 }

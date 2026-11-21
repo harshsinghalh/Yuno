@@ -572,6 +572,8 @@ fun YunoApp() {
             navigator.push(AppRoute.Search)
         }
         val openSettingsPage = { navigator.push(AppRoute.Settings) }
+        val openProfilePage = { navigator.push(AppRoute.Profile) }
+        val openAccountPage = { if (Account.signedIn) openProfilePage() else openSettingsPage() }
         AnimatedContent(
             targetState = when (val entry = shownEntry()) {
                 null -> AppDestination.Tab(tab.ordinal)
@@ -617,7 +619,32 @@ fun YunoApp() {
                             lib, contentPadding, onOpen = player::open,
                             onOpenPlaylist = { navigator.push(AppRoute.Playlist(it)) },
                             onSearch = openSearchPage,
-                            onSignIn = { signingIn = true }, onAccount = openSettingsPage,
+                            onSignIn = { signingIn = true }, onAccount = openAccountPage,
+                            onRemoveHistory = { video ->
+                                if (!Account.signedIn) {
+                                    WatchHistory.remove(video.id)
+                                    ResumeStore.remove(video.id)
+                                    player.actionMessage = "Removed from watch history"
+                                } else {
+                                    val token = video.feedback?.removeFromHistory
+                                    if (token == null) {
+                                        player.actionMessage = "YouTube did not provide a remove action for this item."
+                                    } else {
+                                        scope.launch {
+                                            runCatching { InnerTube.sendFeedback(token) }
+                                                .onSuccess {
+                                                    lib.history.removeVideo(video.id)
+                                                    WatchHistory.remove(video.id)
+                                                    ResumeStore.remove(video.id)
+                                                    player.actionMessage = "Removed from watch history"
+                                                }
+                                                .onFailure {
+                                                    player.actionMessage = "YouTube could not remove this video. Try again."
+                                                }
+                                        }
+                                    }
+                                }
+                            },
                             scrollToTop = scrollToTop[Tab.Library] ?: 0, pullState = libraryPull,
                         )
                     }
@@ -629,6 +656,18 @@ fun YunoApp() {
                         onOpenChannel = ::showChannel,
                         onOpenPlaylist = { navigator.push(AppRoute.Playlist(it)) },
                         onOpenShorts = ::openShorts,
+                    )
+                    AppRoute.Profile -> ProfileScreen(
+                        contentPadding = contentPadding,
+                        onSignIn = { signingIn = true },
+                        onOpenLibrary = { dropStack(); tab = Tab.Library },
+                        onOpenAccountSettings = { navigator.push(AppRoute.SettingsSection(SettingsPage.Account)) },
+                        onSignOut = {
+                            Account.signOut()
+                            lib.reset()
+                            player.refreshAccountState()
+                            navigator.pop()
+                        },
                     )
                     AppRoute.Settings -> SettingsScreen(
                         player, section = null, query = settingsQuery, onQuery = { settingsQuery = it },
@@ -734,7 +773,7 @@ fun YunoApp() {
                     }
                     shareContext.startActivity(Intent.createChooser(send, null))
                 }
-                if (route == null) HeaderActions(onSearch = openSearchPage, onAccount = openSettingsPage)
+                if (route == null) HeaderActions(onSearch = openSearchPage, onAccount = openAccountPage)
             }
         }
         } // page backdrop

@@ -13,6 +13,7 @@ import androidx.compose.runtime.mutableStateListOf
  */
 sealed interface AppRoute {
     data object Settings : AppRoute
+    data object Profile : AppRoute
     data class SettingsSection(val page: SettingsPage) : AppRoute
     data object Search : AppRoute
     data class Playlist(val ref: PlaylistRef) : AppRoute

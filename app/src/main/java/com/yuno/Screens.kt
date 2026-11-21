@@ -35,6 +35,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -366,6 +368,7 @@ fun LibraryScreen(
     onSearch: () -> Unit,
     onSignIn: () -> Unit,
     onAccount: () -> Unit,
+    onRemoveHistory: (VideoItem) -> Unit = {},
     scrollToTop: Int = 0,
     pullState: BarPullRefreshState? = null,
 ) {
@@ -393,7 +396,13 @@ fun LibraryScreen(
                         contentPadding = PaddingValues(horizontal = PageGutter),
                         horizontalArrangement = Arrangement.spacedBy(10.dp),
                     ) {
-                        items(history.take(20), key = { "h-" + it.id }) { video -> HistoryCard(video) { onOpen(video) } }
+                        items(history.take(20), key = { "h-" + it.id }) { video ->
+                            HistoryCard(
+                                video = video,
+                                onClick = { onOpen(video) },
+                                onRemove = { onRemoveHistory(video) },
+                            )
+                        }
                     }
                     signedIn && lib.history.loading -> HistorySkeletons()
                     else -> Text(
@@ -452,13 +461,26 @@ fun LibraryScreen(
 }
 
 @Composable
-private fun HistoryCard(video: VideoItem, onClick: () -> Unit) {
+private fun HistoryCard(video: VideoItem, onClick: () -> Unit, onRemove: (() -> Unit)? = null) {
     val menu = LocalVideoMenu.current
     val anchor = rememberVideoAnchor(FeedVideoThumbRadius.dp)
     Column(Modifier.width(168.dp).prefetchOnPress(video.id).pressable(pressedScale = 0.97f, lift = true, onLongClick = { menu(video) }, onClick = { anchor.play(onClick) })) {
         Box(Modifier.videoAnchor(anchor)) {
             Thumbnail(video.thumbnail, Modifier.fillMaxWidth().aspectRatio(16f / 9f), radius = FeedVideoThumbRadius, videoId = video.id)
             DurationPill(video.durationSec, Modifier.align(Alignment.BottomEnd).padding(6.dp), small = true, live = video.live)
+            if (onRemove != null) {
+                Box(
+                    Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(6.dp)
+                        .size(28.dp)
+                        .floatingChrome(CircleShape)
+                        .pressable(onClick = onRemove),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(Icons.Rounded.Close, contentDescription = "Remove from watch history", tint = MaterialTheme.colorScheme.onSurface, modifier = Modifier.size(16.dp))
+                }
+            }
         }
         Spacer(Modifier.height(7.dp))
         FadingTitle(

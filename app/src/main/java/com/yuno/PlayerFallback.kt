@@ -21,11 +21,10 @@ import org.json.JSONObject
  * proof-of-origin token, so they're no use here.) Client values mirror NewPipeExtractor's
  * ClientsConstants; update them together.
  *
- * When VISIONOS is refused as well there is no third client to try (probed 2026-10-27):
- * TVHTML5_SIMPLY and MWEB still answer, but only with signed links whose n parameter needs
- * YouTube's player JavaScript, which extractor 0.26.5 can no longer run (dev neither, without
- * an external JS engine); WEB is SABR-only and ANDROID_VR links 403 past the first chunk.
- * [BotCheck] waits it out instead; the check comes and goes within minutes.
+ * When VISIONOS is refused as well, this fallback does not switch to an unverified third
+ * client. NewPipeExtractor 0.27.1 refreshes YouTube's client constants and n-sig parsing; the
+ * app still keeps this bot-check substitution deliberately limited to the two tested request
+ * paths above. [BotCheck] waits out a refusal instead of silently changing stream delivery.
  */
 object PlayerFallback {
     private const val CLIENT_NAME = "VISIONOS"

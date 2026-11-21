@@ -896,13 +896,22 @@ private fun ActionPill(
     val c = MaterialTheme.colorScheme
     val bg by androidx.compose.animation.animateColorAsState(if (active) c.primary else c.surfaceContainerHigh, tween(220), label = "pillBg")
     val tint by androidx.compose.animation.animateColorAsState(if (active) c.onPrimary else c.onSurface, tween(220), label = "pillInk")
+    // Keep the like/dislike flourish outside the material clip.
+    val glassShape = shape as? androidx.compose.foundation.shape.CornerBasedShape
+    val surface = if (LocalLiquidGlassEnabled.current && isGlassSupported() && glassShape != null) {
+        Modifier.liquidGlass(
+            glassShape,
+            surfaceTint = if (active) c.primary.copy(alpha = 0.22f) else Color.White.copy(alpha = 0.10f),
+        ).liquidGlassRim(glassShape)
+    } else {
+        Modifier.background(bg, shape)
+    }
     Row(
         modifier = Modifier
             .squishOn(active)
             .height(44.dp)
             .pressable(onClick = onClick)
-            // background(shape), not clip: the like sparks may fly past the pill's edge.
-            .background(bg, shape)
+            .then(surface)
             .animateContentSize(spring(dampingRatio = 0.7f, stiffness = 500f))
             .padding(horizontal = 16.dp),
         verticalAlignment = Alignment.CenterVertically,

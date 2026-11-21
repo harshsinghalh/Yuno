@@ -1673,6 +1673,7 @@ object InnerTube {
     internal fun feedbackOf(o: JSONObject): CardFeedback? {
         var notInterested: String? = null
         var dontRecommend: String? = null
+        var removeFromHistory: String? = null
         o.walk { key, item ->
             val label: String?
             val icon: String?
@@ -1694,11 +1695,22 @@ object InnerTube {
             val token = endpoint?.optString("feedbackToken")?.ifBlank { null } ?: return@walk
             val words = label.orEmpty().replace('\u2019', '\'')
             when {
-                icon == "NOT_INTERESTED" || words.equals("Not interested", ignoreCase = true) -> if (notInterested == null) notInterested = token
-                icon == "REMOVE" || words.startsWith("Don't recommend", ignoreCase = true) -> if (dontRecommend == null) dontRecommend = token
+                // History menus use REMOVE plus this explicit label. Check it first so the
+                // generic REMOVE icon is never mistaken for "Don't recommend channel".
+                icon == "REMOVE_FROM_WATCH_HISTORY" ||
+                    words.contains("remove from watch history", ignoreCase = true) -> {
+                    if (removeFromHistory == null) removeFromHistory = token
+                }
+                icon == "NOT_INTERESTED" || words.equals("Not interested", ignoreCase = true) -> {
+                    if (notInterested == null) notInterested = token
+                }
+                words.startsWith("Don't recommend", ignoreCase = true) -> {
+                    if (dontRecommend == null) dontRecommend = token
+                }
             }
         }
-        return if (notInterested == null && dontRecommend == null) null else CardFeedback(notInterested, dontRecommend)
+        return if (notInterested == null && dontRecommend == null && removeFromHistory == null) null
+        else CardFeedback(notInterested, dontRecommend, removeFromHistory)
     }
 
     /** Sends a card's feedback token (Not interested / Don't recommend channel) to the account. */
