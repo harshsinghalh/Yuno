@@ -80,6 +80,13 @@ On a later Skipii merge, ask only if that update **conflicts with or rewrites** 
 
 Port the upstream code (`com.decio.skipii` → `com.yuno`, user-facing Skipii → Yuno). Do not write a new gesture, animation, layout, or screen that only “does the same thing.” Chrome this file says to keep stays; the upstream behavior is wired into it.
 
+## Recent Yuno-specific additions
+
+- Player Liquid Glass: full-screen and portrait overlay buttons and player action pills use the existing Yuno backdrop renderer when Liquid Glass is enabled; the scrubber thumb is a small rounded glass capsule. Keep the solid fallback and preserve scrub gestures (VideoView.kt, PlayerUi.kt).
+- Profile route: the signed-in account avatar opens the Profile page; signed-out users still reach sign-in through Settings. It displays only the profile name, handle and avatar supplied by the session (AppNavigator.kt, Profile.kt, MainActivity.kt).
+- Watch-history removal: history cards expose a remove affordance; signed-in entries send YouTube's feedback token, guest entries are removed locally, and resume progress is cleared (Account.kt, Screens.kt, Resume.kt, Feeds.kt).
+- Playback extraction: NewPipeExtractor is pinned to 0.27.1 for the refreshed YouTube clients and signature parsing. Investigate extractor/client changes before reverting this dependency (app/build.gradle.kts, PlayerFallback.kt).
+
 ## End of every upstream update
 
 Do this without being asked, after the merge builds. Two lists, one number sequence:

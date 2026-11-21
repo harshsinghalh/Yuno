@@ -58,13 +58,17 @@ data class VideoItem(
     val uploaded: String?,
     /** On air now. The thumbnail badge says LIVE in the duration's place. */
     val live: Boolean = false,
-    /** The card's own "Not interested" / "Don't recommend channel" (signed-in feeds only, #16). */
+    /** The card's own feedback actions, including remove-from-history where YouTube exposes it. */
     val feedback: CardFeedback? = null,
 )
 
-/** Tokens YouTube puts on a signed-in card for its feedback items; sent back as they are ([InnerTube.sendFeedback]). */
+/** Feedback tokens YouTube puts on signed-in cards; sent back unchanged via [InnerTube.sendFeedback]. */
 @Immutable
-data class CardFeedback(val notInterested: String?, val dontRecommend: String?)
+data class CardFeedback(
+    val notInterested: String?,
+    val dontRecommend: String?,
+    val removeFromHistory: String? = null,
+)
 
 fun VideoItem.channelId(): String? =
     channelUrl?.substringAfter("/channel/", "")?.substringBefore('?')?.takeIf { it.startsWith("UC") && it.length > 2 }

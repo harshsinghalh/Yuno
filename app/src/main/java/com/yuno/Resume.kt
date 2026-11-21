@@ -50,6 +50,12 @@ object ResumeStore {
         return if (dur > 0) (pos.toFloat() / dur).coerceIn(0f, 1f) else null
     }
 
+    /** A history removal also clears the local thumbnail resume marker. */
+    fun remove(id: String) {
+        positions.remove(id)
+        prefs?.edit()?.remove(id)?.apply()
+    }
+
     fun save(id: String, positionMs: Long, durationMs: Long) {
         if (id.isBlank() || durationMs <= 0 || durationMs == C.TIME_UNSET) return
         if (positionMs < EDGE_MS || positionMs > durationMs - EDGE_MS) {
@@ -95,6 +101,13 @@ object WatchHistory {
             add(item)
             videos.filter { it.id != item.id }.forEach { add(it) }
         }.take(MAX)
+        videos = next
+        persist(next)
+    }
+
+    fun remove(id: String) {
+        val next = videos.filterNot { it.id == id }
+        if (next.size == videos.size) return
         videos = next
         persist(next)
     }

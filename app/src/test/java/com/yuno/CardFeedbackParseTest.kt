@@ -78,4 +78,15 @@ class CardFeedbackParseTest {
         val video = InnerTube.parseFeed(root).videos.first { it.id == renderer.getString("videoId") }
         assertEquals(CardFeedback("a", "b"), video.feedback)
     }
+
+    @Test fun historyRemovalTokenIsNotClassifiedAsChannelFeedback() {
+        val root = JSONObject().put(
+            "menu",
+            JSONObject().put(
+                "items",
+                JSONArray().put(menuItem("Remove from watch history", "REMOVE", "history-token")),
+            ),
+        )
+        assertEquals(CardFeedback(null, null, "history-token"), InnerTube.feedbackOf(root))
+    }
 }

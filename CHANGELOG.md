@@ -10,6 +10,14 @@ changes something people see or feel (faster, fewer errors); then say that.
 
 ## Unreleased
 
+### New
+- The account avatar opens a Profile page with your connected YouTube identity, history, Library and account settings.
+- Remove a video from watch history directly from its history card.
+
+### Improved
+- The player controls and action pills follow Yuno's Liquid Glass setting; the seek position is marked by a tiny rounded glass capsule.
+- Updated YouTube extraction to NewPipeExtractor 0.27.1 for refreshed client and stream-signature handling.
+
 ## 1.1.1
 
 ![Yuno](https://github.com/danielkanan/Yuno/raw/main/docs/banner.png?v=2)

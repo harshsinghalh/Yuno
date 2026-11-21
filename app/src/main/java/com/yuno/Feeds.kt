@@ -210,6 +210,11 @@ class FeedState(
         return FeedPage(fresh.values.toList(), token, first.chips)
     }
 
+    /** Removes a video from an already-loaded history feed after YouTube confirms deletion. */
+    fun removeVideo(id: String) {
+        videos = videos.filterNot { it.id == id }
+    }
+
     fun reset() {
         job?.cancel()
         shown.clear()

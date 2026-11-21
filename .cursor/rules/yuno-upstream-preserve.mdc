@@ -58,6 +58,13 @@ On an upstream merge, ask only if that update **conflicts with or rewrites** one
 - Back from a video, Short, channel, or playlist returns to the page it was opened from, still at the same scroll. A Short no longer clears the stack (`shortsCovering` in `MainActivity.kt`); the player no longer closes Search. Scroll lives on the feed (`FeedState.scroll`, `LibraryData.libraryScroll` and `homePage`), on search (`SearchState.resultsList` / `shortsGrid`), and on each channel tab (`ChannelState`).
 - Tapping a video opens the full player from that thumbnail, in a straight line. Tapping the video already in the mini player just expands it. The mini player stays hidden until you minimise (`VideoLaunch` in `PlayerDock.kt`, `PlayerState.openRequest`, thumbnails in `UiKit.kt`, `ChannelFlow.kt`, `Screens.kt`, `SearchPage.kt`, morph in `PlayerUi.kt`). Switching videos takes the status-bar blur from the new thumbnail until that video's own frame (`VideoTopSampler` in `VideoStatusBlend.kt`).
 
+## Recent Yuno-specific additions
+
+- Player overlay buttons and player action pills reuse Yuno's Liquid Glass backdrop when enabled; the scrubber uses a small rounded glass capsule and retains the current seek gestures (VideoView.kt, PlayerUi.kt).
+- The account avatar opens a dedicated Profile route when signed in; the page is based only on the name, handle and avatar in Account.profile (AppNavigator.kt, Profile.kt, MainActivity.kt).
+- History-card removal uses the YouTube feedback token for signed-in history, local removal for guests, and clears local resume progress (Account.kt, Screens.kt, Resume.kt, Feeds.kt).
+- NewPipeExtractor 0.27.1 is the playback-extraction baseline; do not revert to 0.26.5 without investigating current YouTube client/signature behavior (app/build.gradle.kts, PlayerFallback.kt).
+
 ## Ask on each merge
 
 - **Playback / extraction / deps:** `YouTube.kt`, `PlayerFallback.kt`, `PlaybackService.kt`, parsers, Gradle/Media3, ProGuard.
